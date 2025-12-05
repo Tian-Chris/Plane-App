@@ -33,7 +33,7 @@ def update_folium_map(lat, lon, plane):
     folium.Marker([plane['lat'], plane['lon']], popup=plane['callsign'], icon=folium.Icon(icon="plane")).add_to(m)
     m.save("flight_map.html")
 
-@sock.route('/ws')
+@sock.route('/')
 def websocket_handler(ws):
     while True:
         message = ws.receive()
