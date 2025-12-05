@@ -47,47 +47,38 @@ def angle_finder(a, b):
     return theta, phi
 
 def querry(location):
-    #assuming you aren't at the north poll cause then 1 degree lon is like 0 km
     url = "https://opensky-network.org/api/states/all"
+    
     params = {
         "lamin": location.lat - 0.5,
         "lomin": location.lon - 0.5,
         "lamax": location.lat + 0.5,
         "lomax": location.lon + 0.5
     }
-
     response = requests.get(url, params=params)
-    if response.status_code == 200:
-        data = response.json()
-        index = 0
-        dist = 0
-        for i in range(len(data["states"])):
-            callsign = data["states"][i][1].strip()
-            lon = data["states"][i][5]
-            lat = data["states"][i][6]
-            alt = data["states"][i][7]
-            print(f"{i}: {callsign} at lat {lat}, lon {lon}, altitude {alt} m")
-            # it was messing up cause it was choosing planes with no alt
-            if alt is not None and np.sqrt((location.lon - lon)**2 + (location.lat - lat)**2) < dist or dist == 0:
-                dist = np.sqrt((location.lon - lon)**2 + (location.lat - lat)**2)
-                index = i
-        callsign = data["states"][i][1].strip()
-        lat = data["states"][index][6]
-        lon = data["states"][index][5]
-        baromic_altitude = data["states"][index][7]
-        print(f"\nchosen plane: {callsign} at lat {lat}, lon {lon}, altitude {baromic_altitude} m\n")
-        pointB = coords(lat, lon, baromic_altitude)
-        return angle_finder(location, pointB)
-    
-    else:
-        print(f"Error: {response.status_code}")
-        return 0, 0
+    data = response.json()
+    states = data.get("states", [])   
+    all_planes = []
 
+    for state in states:
+        callsign = state[1].strip()
+        lon = state[5]
+        lat = state[6]
+        alt = state[7] # Barometric altitude in meters
 
-if __name__ == "__main__":
-    lat1, lon1, h1 = 34.0522, -118.2437, 0
-    
-    pointA = coords(lat1, lon1, h1)
-    theta, phi = querry(pointA)
-    print(f"theta = {theta:.2f}°")
-    print(f"phi = {phi:.2f}° \n")
+        if lon is not None and lat is not None and alt is not None:
+            dist = (location.lon - lon)**2 + (location.lat - lat)**2
+            pointB = coords(lat, lon, alt)
+            bearing, elevation = angle_finder(location, pointB)
+
+            all_planes.append({
+                "callsign": callsign, 
+                "lat": lat, 
+                "lon": lon, 
+                "alt": alt,
+                "dist": dist,
+                "target_bearing": bearing,
+                "target_elevation": elevation,
+            })
+
+    return all_planes
